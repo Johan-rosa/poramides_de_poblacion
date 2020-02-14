@@ -1,0 +1,102 @@
+---
+title: "Piramides de población con ggplot2"
+output: html_notebook
+---
+
+Las pirámides de población son de los gráficos más comunes en el análisis demográfico, por lo que muy probablemente alguien que realiza trabajos o investigaciones en las ciencia sociales necesitaría crear alguno de cuando en vez. Como no existe una geometría en `ggplot2` para hacer este tipo de visualizaciones, podría ser un tanto difícil hacerlas. 
+
+En esta publicación haremos pirámides de población usando ggplot2. Mostraremos la distribución porcentual de la población por grupos quinquenales de edad y luego por edad específica. Finalemente terminaremos con una animación en la que se presenta la evolución de la composición demográfica del país según las estimaciones y proyecciones oficiales de población. El código y la data para reproducir todo el contenido lo pueden encontrar en el repositorio en github de la publiación. 
+
+## La data
+
+La verdad 
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+```
+
+
+
+
+```{r}
+
+poblacion_piramide <- poblacion %>%
+  mutate(
+    porcentaje_total = ifelse(sexo == "Hombres", -porcentaje_total, porcentaje_total)
+    )
+
+
+poblacion_qpliramide <- poblacion_qlong %>%
+  mutate(
+    porcentaje_total = ifelse(sexo == "Hombres", -porcentaje_total, porcentaje_total)
+  )
+
+# Piramide de poblacion en edades quinquenales
+subset(poblacion_qpliramide) %>%
+  filter(str_detect(year, "[0]$")) %>%
+ggplot(aes(x = edad, y = porcentaje_total, fill = sexo)) + 
+  geom_col() + 
+  facet_wrap(~year, ncol = 1) +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_y_continuous(labels = abs) +
+  labs(
+    y = "Porcentaje de la población total",
+    x = "Quinquenios de edad")
+
+# Piramide de población en edades simples
+ggplot(
+  data = subset(poblacion_piramide, year == 2020),
+  mapping = aes(x = edad, ymin = base,
+                ymax = porcentaje_total, fill = sexo, frame = year)
+  ) + 
+  geom_ribbon(alpha = 0.5) +
+  coord_flip() +
+  theme_minimal() +
+  scale_y_continuous(labels = abs) +
+  theme(legend.position = "bottom")
+
+
+
+scale_fill_manual(values = c("midnightblue", "darkred"))
+# Piramide de población en edades simples
+
+p <- poblacion_piramide %>%
+  ggplot(aes(
+    x = edad, ymin = base,
+    ymax = porcentaje_total,
+    fill = sexo)
+    ) + 
+  geom_ribbon(alpha = 0.5) +
+  coord_flip() +
+  theme_minimal() +
+  scale_y_continuous(labels = abs) +
+  scale_fill_manual(values = c("midnightblue", "darkred")) +
+  theme(legend.position = "bottom") +
+  transition_time(year) +
+  labs(
+    title = 'Distribución de la población por edad, año: {as.integer(frame_time)}',
+    color = "Año",
+    x = "Edad",
+    y ='Porcentaje de la población total')
+
+animate(p)
+
+# Evolución de la cantidad de dependientes por persona en edad de trabajar
+poblacion %>%
+  mutate(
+    in_edad_trabajar = edad < 15 | edad > 65
+  ) %>%
+  group_by(year, in_edad_trabajar) %>%
+  summarise(poblacion = sum(poblacion), total = mean(total)) %>%
+  ungroup() %>%
+  spread(in_edad_trabajar, poblacion) %>%
+  mutate(relacion_dependientes = `FALSE`/`TRUE`) %>%
+  ggplot(aes(x = year, y = relacion_dependientes)) +
+  geom_line()
+```
+
